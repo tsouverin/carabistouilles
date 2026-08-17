@@ -4,10 +4,7 @@ import {
   createInitialDeck,
 } from "../Deck";
 
-import {
-  INITIAL_DECK_CONFIG,
-  expectedDeckSize,
-} from "../constants";
+import { expectedDeckSize } from "../constants";
 import { CardType, AttackCard, PotionCard } from "../Cards";
 
 

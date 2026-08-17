@@ -1,6 +1,9 @@
 import type { GameState } from "./GameState";
 import { GAME_CONSTANTS } from "./constants";
-import type { ElementalShieldBreakResult } from "./Element";
+import {
+  Element,
+  type ElementalShieldBreakResult,
+} from "./Element";
 import { getPlayer } from "./Player";
 import { discardCard, drawCard } from "./Deck";
 import {
@@ -51,6 +54,11 @@ export interface PlaceHiddenCardResult {
   hiddenCardsCount: number;
 }
 
+export interface PlayElementalPathResult {
+  cardId: string;
+  element: Element;
+  previousElement: Element | null;
+}
 
 export function drawCardForPlayer(
   game: GameState,
@@ -90,6 +98,14 @@ export function useCardForPlayer(
   if (!isDirectlyPlayableCard(cardInHand)) {
     throw new Error(
       "This card type cannot be used yet.",
+    );
+  }
+
+  if (
+    cardInHand.type === CardType.ElementalPath
+  ) {
+    throw new Error(
+      "Elemental path cards cannot be used yet.",
     );
   }
 
@@ -177,6 +193,15 @@ export function useCardForPlayer(
 
   const resolvedTargetId = targetId ?? playerId;
   const target = getPlayer(game.players, resolvedTargetId);
+
+  if (
+    cardInHand.type !== CardType.Potion &&
+    cardInHand.type !== CardType.ElementalPotion
+  ) {
+    throw new Error(
+      "Potion cards are the only ones playable here.",
+    );
+  }
 
   const healing = applyHealing(target, {
     targetId: resolvedTargetId,

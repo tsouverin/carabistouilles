@@ -1,4 +1,3 @@
-import type { Element } from "./Element";
 import {
   PlayerClass,
   type PlayerClass as PlayerClassType,
@@ -69,7 +68,11 @@ export interface TrickCardInstance extends BaseCard {
 
 export type DirectlyPlayableCard =
   | AttackCardInstance
-  | PotionCardInstance;
+  | PotionCardInstance
+  | ElementalAttackCardInstance
+  | ElementalPotionCardInstance
+  | ElementalPathCardInstance;
+
 
 // Minimal card contract for the first playable slice.
 export const ATTACK_CARD_DAMAGE: Record<AttackCard, number> = {
@@ -99,7 +102,10 @@ export function isDirectlyPlayableCard(
 ): card is DirectlyPlayableCard {
   return (
     card.type === CardType.Attack ||
-    card.type === CardType.Potion
+    card.type === CardType.Potion ||
+    card.type === CardType.ElementalAttack ||
+    card.type === CardType.ElementalPotion ||
+    card.type === CardType.ElementalPath 
   );
 }
 

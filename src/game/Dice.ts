@@ -7,7 +7,7 @@ export interface DiceDefinition {
 
 export const CLASS_DICE: Record<PlayerClass, DiceDefinition> = {
   [PlayerClass.Warrior]: {
-    name: "Dé de Guerre",
+    name: "Dé de Baston",
     faces: [1, 2, 3, 4, 5, 6],
   },
 
