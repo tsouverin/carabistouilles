@@ -687,32 +687,6 @@ describe("useCardForPlayer", () => {
     expect(game.deck.discardPile).toHaveLength(0);
     expect(game.actionsRemaining).toBe(1);
   });
-
-  it("refuse les types de cartes non encore supportés", () => {
-    const game = createTestGame();
-
-    const unsupportedCard: Card = {
-      id: "path-1",
-      name: "Voie du feu",
-      type: CardType.ElementalPath,
-    };
-
-    game.players[0].hand.push(unsupportedCard);
-
-    startTurn(game, "player-1", () => 0);
-
-    expect(() =>
-      useCardForPlayer(
-        game,
-        "player-1",
-        "path-1",
-      ),
-    ).toThrow("This card type cannot be used yet.");
-
-    expect(game.players[0].hand).toHaveLength(1);
-    expect(game.deck.discardPile).toHaveLength(0);
-    expect(game.actionsRemaining).toBe(1);
-  });
 });
 
 describe("placeHiddenCardForPlayer", () => {

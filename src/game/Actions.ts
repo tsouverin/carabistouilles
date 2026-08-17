@@ -4,7 +4,6 @@ import {
   Element,
   applyElementalPower,
   type ElementalShieldBreakResult,
-  type ElementalPowerOptions,
 } from "./Element";
 import { getPlayer } from "./Player";
 import { discardCard, drawCard } from "./Deck";
@@ -51,6 +50,15 @@ export interface UseCardResult {
 
 export type UseCardClassPowerOptions = ClassPowerOptions;
 
+export interface UseCardElementalOptions {
+  elementalElement?: Element;
+  shieldBreakTargetId?: string;
+}
+
+export type UseCardOptions =
+  UseCardClassPowerOptions &
+  UseCardElementalOptions;
+
 export interface PlaceHiddenCardResult {
   cardId: string;
   hiddenCardsCount: number;
@@ -85,7 +93,7 @@ export function useCardForPlayer(
   playerId: string,
   cardId: string,
   targetId?: string,
-  classPowerOptions?: UseCardClassPowerOptions,
+  options?: UseCardOptions,
 ): UseCardResult {
   const player = getPlayer(game.players, playerId);
 
@@ -103,19 +111,18 @@ export function useCardForPlayer(
     );
   }
 
-  if (
-    cardInHand.type === CardType.ElementalPath
-  ) {
+  // Les cartes de voie ont leur propre action.
+  if (cardInHand.type === CardType.ElementalPath) {
     throw new Error(
-      "Elemental path cards cannot be used yet.",
+      "Elemental path cards must be played with playElementalPathForPlayer.",
     );
   }
 
-  if (
-    (cardInHand.type === CardType.Attack ||
-      cardInHand.type === CardType.ElementalAttack) &&
-    !targetId
-  ) {
+  const isAttack =
+    cardInHand.type === CardType.Attack ||
+    cardInHand.type === CardType.ElementalAttack;
+
+  if (isAttack && !targetId) {
     throw new Error(
       "Attack cards require a target.",
     );
@@ -128,7 +135,7 @@ export function useCardForPlayer(
       cardInHand.attack,
     ) &&
     player.class === PlayerClass.Wizard &&
-    !classPowerOptions?.wizardElement
+    !options?.wizardElement
   ) {
     throw new Error(
       "Wizard must choose an elemental passive.",
@@ -139,9 +146,13 @@ export function useCardForPlayer(
 
   const removedCard = removeCardFromHand(player, cardId);
 
-  // ===== ATTACK CARDS =====
+  // ============================================================
+  // ATTACK
+  // ============================================================
+
   if (cardInHand.type === CardType.Attack) {
     const resolvedTargetId = targetId as string;
+
     const target = getPlayer(
       game.players,
       resolvedTargetId,
@@ -158,10 +169,12 @@ export function useCardForPlayer(
     let bonusShieldBreak: ElementalShieldBreakResult | undefined;
     let drawnCardId: string | undefined;
     let classPowerEffect: ClassPowerEffect | undefined;
-    const classPowerTriggered = isAssociatedAttackForClass(
-      player.class,
-      cardInHand.attack,
-    );
+
+    const classPowerTriggered =
+      isAssociatedAttackForClass(
+        player.class,
+        cardInHand.attack,
+      );
 
     if (classPowerTriggered) {
       const result = applyClassPower(
@@ -169,7 +182,7 @@ export function useCardForPlayer(
         player,
         target,
         resolvedTargetId,
-        classPowerOptions,
+        options,
       );
 
       classPowerEffect = result.classPowerEffect;
@@ -195,51 +208,49 @@ export function useCardForPlayer(
     };
   }
 
-  // ===== ELEMENTAL ATTACK CARDS =====
+  // ============================================================
+  // ATTACK ELEMENTAIRE
+  // ============================================================
+
   if (cardInHand.type === CardType.ElementalAttack) {
     const resolvedTargetId = targetId as string;
+
     const target = getPlayer(
       game.players,
       resolvedTargetId,
     );
-
-    const baseDamage = getAttackCardDamage(
-      cardInHand.attack,
-    );
-
-    // If player has no element, treat as basic attack
-    if (player.element === null) {
-      const damage = applyDamage(target, {
-        sourceId: playerId,
-        targetId: resolvedTargetId,
-        amount: baseDamage,
-      });
-
-      discardCard(game.deck, removedCard);
-
-      return {
-        cardId: removedCard.id,
-        cardType: cardInHand.type,
-        targetId: resolvedTargetId,
-        damage,
-      };
-    }
-
-    // Player has an element - apply bonuses based on element type
     const damage = applyDamage(target, {
       sourceId: playerId,
       targetId: resolvedTargetId,
-      amount: baseDamage,
+      amount: getAttackCardDamage(cardInHand.attack),
     });
 
-    const elementalResult = applyElementalPower(
-      game,
-      player,
-      target,
-      resolvedTargetId,
-      player.element,
-      classPowerOptions as ElementalPowerOptions,
-    );
+    let bonusDamage: DamageResult | undefined;
+    let bonusHealing: HealingResult | undefined;
+    let bonusShieldBreak: ElementalShieldBreakResult | undefined;
+    let drawnCardId: string | undefined;
+    let classPowerEffect: ClassPowerEffect | undefined;
+
+    // Sans voie élémentaire :
+    // la carte fonctionne comme une attaque normale.
+    if (player.element !== null) {
+      const elementalResult = applyElementalPower(
+        game,
+        player,
+        target,
+        resolvedTargetId,
+        player.element,
+        options,
+      );
+
+      bonusDamage = elementalResult.bonusDamage;
+      bonusHealing = elementalResult.bonusHealing;
+      bonusShieldBreak =
+        elementalResult.bonusShieldBreak;
+      drawnCardId = elementalResult.drawnCardId;
+      classPowerEffect =
+        elementalResult.classPowerEffect;
+    }
 
     discardCard(game.deck, removedCard);
 
@@ -248,24 +259,35 @@ export function useCardForPlayer(
       cardType: cardInHand.type,
       targetId: resolvedTargetId,
       damage,
-      bonusDamage: elementalResult.bonusDamage,
-      bonusHealing: elementalResult.bonusHealing,
-      bonusShieldBreak: elementalResult.bonusShieldBreak,
-      drawnCardId: elementalResult.drawnCardId,
-      classPowerEffect: elementalResult.classPowerEffect,
+      bonusDamage,
+      bonusHealing,
+      bonusShieldBreak,
+      drawnCardId,
+      classPowerEffect,
     };
   }
 
-  // ===== POTION CARDS =====
+  // ============================================================
+  // POTION
+  // ============================================================
+
   if (cardInHand.type === CardType.Potion) {
     const resolvedTargetId = targetId ?? playerId;
-    const target = getPlayer(game.players, resolvedTargetId);
+
+    const target = getPlayer(
+      game.players,
+      resolvedTargetId,
+    );
 
     const healing = applyHealing(target, {
       targetId: resolvedTargetId,
-      amount: getPotionCardHealing(cardInHand.potion),
+      amount: getPotionCardHealing(
+        cardInHand.potion,
+      ),
       type:
-        cardInHand.potion === "health" ? "hp" : "shield",
+        cardInHand.potion === "health"
+          ? "hp"
+          : "shield",
     });
 
     discardCard(game.deck, removedCard);
@@ -278,16 +300,28 @@ export function useCardForPlayer(
     };
   }
 
-  // ===== ELEMENTAL POTION CARDS =====
+  // ============================================================
+  // POTION ELEMENTAIRE
+  // ============================================================
+
   if (cardInHand.type === CardType.ElementalPotion) {
     const resolvedTargetId = targetId ?? playerId;
-    const target = getPlayer(game.players, resolvedTargetId);
 
+    const target = getPlayer(
+      game.players,
+      resolvedTargetId,
+    );
+
+    // Effet de base : toujours appliqué.
     const healing = applyHealing(target, {
       targetId: resolvedTargetId,
-      amount: getPotionCardHealing(cardInHand.potion),
+      amount: getPotionCardHealing(
+        cardInHand.potion,
+      ),
       type:
-        cardInHand.potion === "health" ? "hp" : "shield",
+        cardInHand.potion === "health"
+          ? "hp"
+          : "shield",
     });
 
     let bonusDamage: DamageResult | undefined;
@@ -296,7 +330,7 @@ export function useCardForPlayer(
     let drawnCardId: string | undefined;
     let classPowerEffect: ClassPowerEffect | undefined;
 
-    // If player has an element, apply elemental bonuses
+    // La partie élémentaire est optionnelle.
     if (player.element !== null) {
       const elementalResult = applyElementalPower(
         game,
@@ -304,14 +338,16 @@ export function useCardForPlayer(
         target,
         resolvedTargetId,
         player.element,
-        classPowerOptions as ElementalPowerOptions,
+        options,
       );
 
       bonusDamage = elementalResult.bonusDamage;
       bonusHealing = elementalResult.bonusHealing;
-      bonusShieldBreak = elementalResult.bonusShieldBreak;
+      bonusShieldBreak =
+        elementalResult.bonusShieldBreak;
       drawnCardId = elementalResult.drawnCardId;
-      classPowerEffect = elementalResult.classPowerEffect;
+      classPowerEffect =
+        elementalResult.classPowerEffect;
     }
 
     discardCard(game.deck, removedCard);
@@ -329,7 +365,9 @@ export function useCardForPlayer(
     };
   }
 
-  throw new Error("This card type cannot be used here.");
+  throw new Error(
+    "This card type cannot be used here.",
+  );
 }
 
 export function placeHiddenCardForPlayer(
@@ -338,34 +376,48 @@ export function placeHiddenCardForPlayer(
   cardId: string,
 ): PlaceHiddenCardResult {
   if (game.currentPlayerId !== playerId) {
-    throw new Error("This player is not currently playing.");
+    throw new Error(
+      "This player is not currently playing.",
+    );
   }
 
-  const player = getPlayer(game.players, playerId);
+  const player = getPlayer(
+    game.players,
+    playerId,
+  );
 
   const cardInHand = player.hand.find(
     (card) => card.id === cardId,
   );
 
   if (!cardInHand) {
-    throw new Error("Card is not in player's hand.");
+    throw new Error(
+      "Card is not in player's hand.",
+    );
   }
 
   if (
     player.hiddenCards.length >=
     GAME_CONSTANTS.maxHiddenCards
   ) {
-    throw new Error("Hidden card limit reached.");
+    throw new Error(
+      "Hidden card limit reached.",
+    );
   }
 
   consumeAction(game, playerId);
 
-  const hiddenCard = removeCardFromHand(player, cardId);
+  const hiddenCard = removeCardFromHand(
+    player,
+    cardId,
+  );
+
   player.hiddenCards.push(hiddenCard);
 
   return {
     cardId: hiddenCard.id,
-    hiddenCardsCount: player.hiddenCards.length,
+    hiddenCardsCount:
+      player.hiddenCards.length,
   };
 }
 
@@ -376,26 +428,41 @@ export function playElementalPathForPlayer(
   element: Element,
 ): PlayElementalPathResult {
   if (game.currentPlayerId !== playerId) {
-    throw new Error("This player is not currently playing.");
+    throw new Error(
+      "This player is not currently playing.",
+    );
   }
 
-  const player = getPlayer(game.players, playerId);
+  const player = getPlayer(
+    game.players,
+    playerId,
+  );
 
   const cardInHand = player.hand.find(
     (card) => card.id === cardId,
   );
 
   if (!cardInHand) {
-    throw new Error("Card is not in player's hand.");
+    throw new Error(
+      "Card is not in player's hand.",
+    );
   }
 
-  if (cardInHand.type !== CardType.ElementalPath) {
-    throw new Error("This card is not an elemental path.");
+  if (
+    cardInHand.type !== CardType.ElementalPath
+  ) {
+    throw new Error(
+      "This card is not an elemental path.",
+    );
   }
 
   consumeAction(game, playerId);
 
-  const removedCard = removeCardFromHand(player, cardId);
+  const removedCard = removeCardFromHand(
+    player,
+    cardId,
+  );
+
   const previousElement = player.element;
 
   player.element = element;

@@ -2,8 +2,14 @@ import type { GameState } from "./GameState";
 import { getPlayer, type Player } from "./Player";
 import { drawCard } from "./Deck";
 import { addCardToHand } from "./Hand";
-import { applyDamage, type DamageResult } from "./Damage";
-import { applyHealing, type HealingResult } from "./Healing";
+import {
+  applyDamage,
+  type DamageResult,
+} from "./Damage";
+import {
+  applyHealing,
+  type HealingResult,
+} from "./Healing";
 
 export const Element = {
   Fire: "fire",
@@ -20,17 +26,28 @@ export function hasElementAdvantage(
   defender: Element,
 ): boolean {
   return (
-    (attacker === Element.Air && defender === Element.Earth) ||
-    (attacker === Element.Earth && defender === Element.Water) ||
-    (attacker === Element.Water && defender === Element.Fire) ||
-    (attacker === Element.Fire && defender === Element.Air)
+    (attacker === Element.Air &&
+      defender === Element.Earth) ||
+    (attacker === Element.Earth &&
+      defender === Element.Water) ||
+    (attacker === Element.Water &&
+      defender === Element.Fire) ||
+    (attacker === Element.Fire &&
+      defender === Element.Air)
   );
 }
 
-// Passive bonuses granted by an elemental path, shared by any class that can trigger them.
+// ============================================================
+// ELEMENTAL PASSIVE BONUSES
+// ============================================================
+
 export const ELEMENTAL_FIRE_BONUS_DAMAGE = 1;
 export const ELEMENTAL_WATER_SHIELD_HEAL = 1;
 export const ELEMENTAL_EARTH_SHIELD_BREAK = 1;
+
+// ============================================================
+// SHIELD BREAK
+// ============================================================
 
 export interface ElementalShieldBreakTarget {
   shield: number;
@@ -47,7 +64,11 @@ export function applyElementalShieldBreak<
   target: T,
   amount: number = ELEMENTAL_EARTH_SHIELD_BREAK,
 ): ElementalShieldBreakResult {
-  const shieldBroken = Math.min(target.shield, amount);
+  const shieldBroken = Math.min(
+    target.shield,
+    amount,
+  );
+
   target.shield -= shieldBroken;
 
   return {
@@ -55,6 +76,10 @@ export function applyElementalShieldBreak<
     remainingShield: target.shield,
   };
 }
+
+// ============================================================
+// ELEMENTAL POWER
+// ============================================================
 
 export type ElementalPowerEffect =
   | "fireBonusDamage"
@@ -74,25 +99,43 @@ export interface ElementalPowerOptions {
   shieldBreakTargetId?: string;
 }
 
-// Grants only the passive bonus of the chosen element, no elemental combat advantage.
+/**
+ * Applies the passive effect associated with the player's
+ * elemental path.
+ *
+ * This function should only be called when the player
+ * already has an elemental path.
+ *
+ * If the player has no elemental path, the card's base
+ * effect must be handled by the caller without calling
+ * this function.
+ */
 export function applyElementalPower(
   game: GameState,
   player: Player,
   target: Player,
-  resolvedTargetId: string,
+  targetId: string,
   element: Element,
   options?: ElementalPowerOptions,
 ): ElementalPowerResult {
+  // ==========================================================
+  // FIRE
+  // ==========================================================
+
   if (element === Element.Fire) {
     return {
       classPowerEffect: "fireBonusDamage",
       bonusDamage: applyDamage(target, {
         sourceId: player.id,
-        targetId: resolvedTargetId,
+        targetId,
         amount: ELEMENTAL_FIRE_BONUS_DAMAGE,
       }),
     };
   }
+
+  // ==========================================================
+  // WATER
+  // ==========================================================
 
   if (element === Element.Water) {
     return {
@@ -105,9 +148,14 @@ export function applyElementalPower(
     };
   }
 
+  // ==========================================================
+  // EARTH
+  // ==========================================================
+
   if (element === Element.Earth) {
     const shieldBreakTargetId =
       options?.shieldBreakTargetId ?? player.id;
+
     const shieldBreakTarget = getPlayer(
       game.players,
       shieldBreakTargetId,
@@ -115,20 +163,28 @@ export function applyElementalPower(
 
     return {
       classPowerEffect: "earthShieldBreak",
-      bonusShieldBreak: applyElementalShieldBreak(shieldBreakTarget),
+      bonusShieldBreak: applyElementalShieldBreak(
+        shieldBreakTarget,
+      ),
     };
   }
+
+  // ==========================================================
+  // AIR
+  // ==========================================================
 
   const drawnCard = drawCard(game.deck);
 
-  if (drawnCard) {
-    addCardToHand(player, drawnCard);
-
+  if (drawnCard === null) {
     return {
       classPowerEffect: "airCardDraw",
-      drawnCardId: drawnCard.id,
     };
   }
 
-  return { classPowerEffect: "airCardDraw" };
+  addCardToHand(player, drawnCard);
+
+  return {
+    classPowerEffect: "airCardDraw",
+    drawnCardId: drawnCard.id,
+  };
 }
