@@ -804,3 +804,131 @@ describe("placeHiddenCardForPlayer", () => {
     expect(game.actionsRemaining).toBe(1);
   });
 });
+
+describe("playElementalPathForPlayer", () => {
+  it("choisit un élément et défausse la carte", () => {
+    const game = createTestGame();
+
+    const pathCard = createElementalPathCard("path-1");
+
+    game.players[0].hand.push(pathCard);
+
+    startTurn(game, "player-1", () => 0);
+
+    const result = playElementalPathForPlayer(
+      game,
+      "player-1",
+      "path-1",
+      Element.Fire,
+    );
+
+    expect(result.cardId).toBe("path-1");
+    expect(result.element).toBe(Element.Fire);
+    expect(result.previousElement).toBeNull();
+    expect(game.players[0].element).toBe(Element.Fire);
+    expect(game.players[0].hand).toHaveLength(0);
+    expect(game.deck.discardPile).toHaveLength(1);
+    expect(game.actionsRemaining).toBe(0);
+  });
+
+  it("remplace un élément précédent", () => {
+    const game = createTestGame();
+
+    game.players[0].element = Element.Water;
+
+    const pathCard = createElementalPathCard("path-2");
+
+    game.players[0].hand.push(pathCard);
+
+    startTurn(game, "player-1", () => 0);
+
+    const result = playElementalPathForPlayer(
+      game,
+      "player-1",
+      "path-2",
+      Element.Earth,
+    );
+
+    expect(result.element).toBe(Element.Earth);
+    expect(result.previousElement).toBe(Element.Water);
+    expect(game.players[0].element).toBe(Element.Earth);
+  });
+
+  it("refuse pour un joueur non actif", () => {
+    const game = createTestGame();
+
+    const pathCard = createElementalPathCard("path-3");
+
+    game.players[0].hand.push(pathCard);
+
+    startTurn(game, "player-1", () => 0);
+
+    expect(() =>
+      playElementalPathForPlayer(
+        game,
+        "player-2",
+        "path-3",
+        Element.Air,
+      ),
+    ).toThrow("This player is not currently playing.");
+  });
+
+  it("refuse si la carte n'est pas une voie élémentaire", () => {
+    const game = createTestGame();
+
+    const attackCard = createAttackCard(
+      "attack-1",
+      AttackCard.Arrow,
+    );
+
+    game.players[0].hand.push(attackCard);
+
+    startTurn(game, "player-1", () => 0);
+
+    expect(() =>
+      playElementalPathForPlayer(
+        game,
+        "player-1",
+        "attack-1",
+        Element.Fire,
+      ),
+    ).toThrow("This card is not an elemental path.");
+  });
+
+  it("refuse si la carte n'est pas dans la main", () => {
+    const game = createTestGame();
+
+    startTurn(game, "player-1", () => 0);
+
+    expect(() =>
+      playElementalPathForPlayer(
+        game,
+        "player-1",
+        "missing-path",
+        Element.Water,
+      ),
+    ).toThrow("Card is not in player's hand.");
+  });
+
+  it("refuse quand il ne reste plus d'action", () => {
+    const game = createTestGame();
+
+    const pathCard = createElementalPathCard("path-4");
+
+    game.players[0].hand.push(pathCard);
+
+    startTurn(game, "player-1", () => 0);
+    drawCardForPlayer(game, "player-1");
+
+    expect(() =>
+      playElementalPathForPlayer(
+        game,
+        "player-1",
+        "path-4",
+        Element.Earth,
+      ),
+    ).toThrow("No actions remaining.");
+
+    expect(game.players[0].element).toBeNull();
+  });
+});
