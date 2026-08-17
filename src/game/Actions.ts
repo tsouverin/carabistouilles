@@ -256,3 +256,43 @@ export function placeHiddenCardForPlayer(
     hiddenCardsCount: player.hiddenCards.length,
   };
 }
+
+export function playElementalPathForPlayer(
+  game: GameState,
+  playerId: string,
+  cardId: string,
+  element: Element,
+): PlayElementalPathResult {
+  if (game.currentPlayerId !== playerId) {
+    throw new Error("This player is not currently playing.");
+  }
+
+  const player = getPlayer(game.players, playerId);
+
+  const cardInHand = player.hand.find(
+    (card) => card.id === cardId,
+  );
+
+  if (!cardInHand) {
+    throw new Error("Card is not in player's hand.");
+  }
+
+  if (cardInHand.type !== CardType.ElementalPath) {
+    throw new Error("This card is not an elemental path.");
+  }
+
+  consumeAction(game, playerId);
+
+  const removedCard = removeCardFromHand(player, cardId);
+  const previousElement = player.element;
+
+  player.element = element;
+
+  discardCard(game.deck, removedCard);
+
+  return {
+    cardId: removedCard.id,
+    element,
+    previousElement,
+  };
+}

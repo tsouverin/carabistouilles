@@ -4,6 +4,7 @@ import {
   drawCardForPlayer,
   placeHiddenCardForPlayer,
   useCardForPlayer,
+  playElementalPathForPlayer,
 } from "../Actions";
 import { createGameState } from "../GameState";
 import { createPlayer } from "../Player";
@@ -50,6 +51,14 @@ function createPotionCard(
     name: `Potion ${id}`,
     type: CardType.Potion,
     potion,
+  };
+}
+
+function createElementalPathCard(id: string): Card {
+  return {
+    id,
+    name: `Voie élémentaire ${id}`,
+    type: CardType.ElementalPath,
   };
 }
 
