@@ -75,7 +75,7 @@ export interface ElementalPowerOptions {
 }
 
 // Grants only the passive bonus of the chosen element, no elemental combat advantage.
-export function applyElementalScrollPower(
+export function applyElementalPower(
   game: GameState,
   player: Player,
   target: Player,

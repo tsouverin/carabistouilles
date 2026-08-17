@@ -62,6 +62,30 @@ function createElementalPathCard(id: string): Card {
   };
 }
 
+function createElementalAttackCard(
+  id: string,
+  attack: AttackCard,
+): Card {
+  return {
+    id,
+    name: `Attaque élémentaire ${id}`,
+    type: CardType.ElementalAttack,
+    attack,
+  };
+}
+
+function createElementalPotionCard(
+  id: string,
+  potion: PotionCard,
+): Card {
+  return {
+    id,
+    name: `Potion élémentaire ${id}`,
+    type: CardType.ElementalPotion,
+    potion,
+  };
+}
+
 function createTestGame() {
   const players = [
     createPlayer(

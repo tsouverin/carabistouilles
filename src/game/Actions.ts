@@ -2,7 +2,9 @@ import type { GameState } from "./GameState";
 import { GAME_CONSTANTS } from "./constants";
 import {
   Element,
+  applyElementalPower,
   type ElementalShieldBreakResult,
+  type ElementalPowerOptions,
 } from "./Element";
 import { getPlayer } from "./Player";
 import { discardCard, drawCard } from "./Deck";
@@ -110,7 +112,8 @@ export function useCardForPlayer(
   }
 
   if (
-    cardInHand.type === CardType.Attack &&
+    (cardInHand.type === CardType.Attack ||
+      cardInHand.type === CardType.ElementalAttack) &&
     !targetId
   ) {
     throw new Error(
@@ -136,6 +139,7 @@ export function useCardForPlayer(
 
   const removedCard = removeCardFromHand(player, cardId);
 
+  // ===== ATTACK CARDS =====
   if (cardInHand.type === CardType.Attack) {
     const resolvedTargetId = targetId as string;
     const target = getPlayer(
@@ -191,33 +195,141 @@ export function useCardForPlayer(
     };
   }
 
-  const resolvedTargetId = targetId ?? playerId;
-  const target = getPlayer(game.players, resolvedTargetId);
-
-  if (
-    cardInHand.type !== CardType.Potion &&
-    cardInHand.type !== CardType.ElementalPotion
-  ) {
-    throw new Error(
-      "Potion cards are the only ones playable here.",
+  // ===== ELEMENTAL ATTACK CARDS =====
+  if (cardInHand.type === CardType.ElementalAttack) {
+    const resolvedTargetId = targetId as string;
+    const target = getPlayer(
+      game.players,
+      resolvedTargetId,
     );
+
+    const baseDamage = getAttackCardDamage(
+      cardInHand.attack,
+    );
+
+    // If player has no element, treat as basic attack
+    if (player.element === null) {
+      const damage = applyDamage(target, {
+        sourceId: playerId,
+        targetId: resolvedTargetId,
+        amount: baseDamage,
+      });
+
+      discardCard(game.deck, removedCard);
+
+      return {
+        cardId: removedCard.id,
+        cardType: cardInHand.type,
+        targetId: resolvedTargetId,
+        damage,
+      };
+    }
+
+    // Player has an element - apply bonuses based on element type
+    const damage = applyDamage(target, {
+      sourceId: playerId,
+      targetId: resolvedTargetId,
+      amount: baseDamage,
+    });
+
+    const elementalResult = applyElementalPower(
+      game,
+      player,
+      target,
+      resolvedTargetId,
+      player.element,
+      classPowerOptions as ElementalPowerOptions,
+    );
+
+    discardCard(game.deck, removedCard);
+
+    return {
+      cardId: removedCard.id,
+      cardType: cardInHand.type,
+      targetId: resolvedTargetId,
+      damage,
+      bonusDamage: elementalResult.bonusDamage,
+      bonusHealing: elementalResult.bonusHealing,
+      bonusShieldBreak: elementalResult.bonusShieldBreak,
+      drawnCardId: elementalResult.drawnCardId,
+      classPowerEffect: elementalResult.classPowerEffect,
+    };
   }
 
-  const healing = applyHealing(target, {
-    targetId: resolvedTargetId,
-    amount: getPotionCardHealing(cardInHand.potion),
-    type:
-      cardInHand.potion === "health" ? "hp" : "shield",
-  });
+  // ===== POTION CARDS =====
+  if (cardInHand.type === CardType.Potion) {
+    const resolvedTargetId = targetId ?? playerId;
+    const target = getPlayer(game.players, resolvedTargetId);
 
-  discardCard(game.deck, removedCard);
+    const healing = applyHealing(target, {
+      targetId: resolvedTargetId,
+      amount: getPotionCardHealing(cardInHand.potion),
+      type:
+        cardInHand.potion === "health" ? "hp" : "shield",
+    });
 
-  return {
-    cardId: removedCard.id,
-    cardType: cardInHand.type,
-    targetId: resolvedTargetId,
-    healing,
-  };
+    discardCard(game.deck, removedCard);
+
+    return {
+      cardId: removedCard.id,
+      cardType: cardInHand.type,
+      targetId: resolvedTargetId,
+      healing,
+    };
+  }
+
+  // ===== ELEMENTAL POTION CARDS =====
+  if (cardInHand.type === CardType.ElementalPotion) {
+    const resolvedTargetId = targetId ?? playerId;
+    const target = getPlayer(game.players, resolvedTargetId);
+
+    const healing = applyHealing(target, {
+      targetId: resolvedTargetId,
+      amount: getPotionCardHealing(cardInHand.potion),
+      type:
+        cardInHand.potion === "health" ? "hp" : "shield",
+    });
+
+    let bonusDamage: DamageResult | undefined;
+    let bonusHealing: HealingResult | undefined;
+    let bonusShieldBreak: ElementalShieldBreakResult | undefined;
+    let drawnCardId: string | undefined;
+    let classPowerEffect: ClassPowerEffect | undefined;
+
+    // If player has an element, apply elemental bonuses
+    if (player.element !== null) {
+      const elementalResult = applyElementalPower(
+        game,
+        player,
+        target,
+        resolvedTargetId,
+        player.element,
+        classPowerOptions as ElementalPowerOptions,
+      );
+
+      bonusDamage = elementalResult.bonusDamage;
+      bonusHealing = elementalResult.bonusHealing;
+      bonusShieldBreak = elementalResult.bonusShieldBreak;
+      drawnCardId = elementalResult.drawnCardId;
+      classPowerEffect = elementalResult.classPowerEffect;
+    }
+
+    discardCard(game.deck, removedCard);
+
+    return {
+      cardId: removedCard.id,
+      cardType: cardInHand.type,
+      targetId: resolvedTargetId,
+      healing,
+      bonusDamage,
+      bonusHealing,
+      bonusShieldBreak,
+      drawnCardId,
+      classPowerEffect,
+    };
+  }
+
+  throw new Error("This card type cannot be used here.");
 }
 
 export function placeHiddenCardForPlayer(

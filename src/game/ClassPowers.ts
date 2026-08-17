@@ -5,7 +5,7 @@ import { applyHealing, type HealingResult } from "./Healing";
 import { PlayerClass } from "./types";
 import {
   Element,
-  applyElementalScrollPower,
+  applyElementalPower,
   type ElementalPowerEffect,
   type ElementalShieldBreakResult,
 } from "./Element";
@@ -64,7 +64,7 @@ export function applyClassPower(
 
   const scrollElement = options?.wizardElement as Element;
 
-  return applyElementalScrollPower(
+  return applyElementalPower(
     game,
     player,
     target,
