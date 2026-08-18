@@ -19,7 +19,7 @@ export type ClassPowerEffect =
   | "paladinShieldBlessing"
   | "archerShieldBreakDamage"
   | "archerPiercingDamage"
-  | "wizardElementalPassive";
+  | ElementalPowerEffect;
 
 export interface ClassPowerResult {
   classPowerEffect: ClassPowerEffect;
@@ -88,15 +88,20 @@ export function applyClassPower(
       );
     }
 
-    case PlayerClass.Wizard:
+    case PlayerClass.Wizard: {
+      const shieldBreakTargetId =
+        options?.classPowerTargetId ??
+        player.id;
+
       return applyWizardPower(
         game,
         player,
         target,
         resolvedTargetId,
         options?.wizardElement,
-        options?.classPowerTargetId,
+        shieldBreakTargetId,
       );
+    }
   }
 }
 
@@ -230,7 +235,16 @@ export function applyWizardPower(
   wizardElement?: Element,
   shieldBreakTargetId?: string,
 ): ClassPowerResult {
-  if (wizardElement === undefined) {
+  /*
+   * Le Sorcier peut choisir ponctuellement un élément
+   * (wizardElement). S'il ne le fait pas mais qu'il a
+   * déjà une voie élémentaire permanente (player.element),
+   * son pouvoir de classe utilise cette voie par défaut.
+   */
+  const resolvedElement =
+    wizardElement ?? player.element ?? undefined;
+
+  if (resolvedElement === undefined) {
     throw new Error(
       "Wizard must choose an elemental passive.",
     );
@@ -242,7 +256,7 @@ export function applyWizardPower(
       player,
       target,
       targetId,
-      wizardElement,
+      resolvedElement,
       {
         shieldBreakTargetId,
       },
@@ -250,13 +264,13 @@ export function applyWizardPower(
 
   return {
     /*
-     * Le pouvoir de classe reste celui du Sorcier.
-     *
-     * L'effet concret produit par ce pouvoir est
-     * conservé séparément dans elementalPowerEffect.
+     * Pour le Sorcier, le pouvoir de classe EST
+     * le bonus élémentaire utilisé : classPowerEffect
+     * et elementalPowerEffect portent donc la même
+     * valeur (ex: "fireBonusDamage").
      */
-  classPowerEffect:
-    getWizardClassPowerEffect(),
+    classPowerEffect:
+      elementalResult.elementalPowerEffect,
 
     bonusDamage:
       elementalResult.bonusDamage,
@@ -273,17 +287,4 @@ export function applyWizardPower(
     elementalPowerEffect:
       elementalResult.elementalPowerEffect,
   };
-}
-
-/**
- * Identifie le pouvoir de classe du Sorcier.
- *
- * Le détail de l'effet reste dans elementalPowerEffect.
- * Cela évite de faire passer un effet élémentaire
- * pour un pouvoir de classe du Guerrier, du Paladin
- * ou de l'Archer.
- */
-
-function getWizardClassPowerEffect(): ClassPowerEffect {
-  return "wizardElementalPassive";
 }

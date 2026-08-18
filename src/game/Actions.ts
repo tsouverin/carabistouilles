@@ -67,8 +67,9 @@ export interface UseCardResult {
   /**
    * Effet du pouvoir de classe.
    *
-   * Pour le Sorcier, ce sera :
-   * "wizardElementalPower"
+   * Pour le Sorcier, ce sera l'effet élémentaire
+   * effectivement utilisé (ex: "fireBonusDamage"),
+   * identique à elementalPowerEffect.
    */
   classPowerEffect?: ClassPowerEffect;
 
