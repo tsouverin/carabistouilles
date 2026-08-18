@@ -113,6 +113,8 @@ function mergeDamage(
     remainingShield: b.remainingShield,
     remainingHp: b.remainingHp,
     killed: a.killed || b.killed,
+    elementalAdvantage: a.elementalAdvantage || b.elementalAdvantage,
+    elementalBonusDamage: a.elementalBonusDamage + b.elementalBonusDamage,
   };
 }
 

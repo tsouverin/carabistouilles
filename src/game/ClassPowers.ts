@@ -203,6 +203,8 @@ export function applyArcherPower(
         dissipatedDamage:
           2 - shieldBroken,
         killed: false,
+        elementalAdvantage: false,
+        elementalBonusDamage: 0,
       },
     };
   }

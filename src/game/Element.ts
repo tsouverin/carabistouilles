@@ -47,8 +47,8 @@ export interface ElementalShieldBreakResult {
  * Air > Terre > Eau > Feu > Air
  */
 export function hasElementAdvantage(
-  attackingElement: Element,
-  defendingElement: Element,
+  attackingElement: Element | null,
+  defendingElement: Element | null,
 ): boolean {
   return (
     (attackingElement === Element.Air &&
