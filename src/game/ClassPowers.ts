@@ -1,11 +1,18 @@
 import type { GameState } from "./GameState";
 import { getPlayer, type Player } from "./Player";
-import { applyDamage, type DamageResult } from "./Damage";
-import { applyHealing, type HealingResult } from "./Healing";
+import {
+  applyDamage,
+  type DamageResult,
+} from "./Damage";
+import {
+  applyHealing,
+  type HealingResult,
+} from "./Healing";
 import { PlayerClass } from "./types";
 import {
   Element,
   applyElementalPower,
+  applyElementalShieldBreak,
   type ElementalPowerEffect,
   type ElementalShieldBreakResult,
 } from "./Element";
@@ -19,7 +26,8 @@ export type ClassPowerEffect =
   | "paladinShieldBlessing"
   | "archerShieldBreakDamage"
   | "archerPiercingDamage"
-  | ElementalPowerEffect;
+  | ElementalPowerEffect
+  | "wizardNoElementalPassive";
 
 export interface ClassPowerResult {
   classPowerEffect: ClassPowerEffect;
@@ -38,7 +46,17 @@ export interface ClassPowerResult {
 export interface ClassPowerOptions {
   classPowerTargetId?: string;
   archerMode?: ArcherMode;
-  wizardElement?: Element;
+
+  /**
+   * Choix ponctuel du Sorcier :
+   *
+   * - Element.X : utilise le bonus élémentaire choisi
+   * - null : n'utilise aucun bonus élémentaire
+   * - undefined : aucun choix n'a été fourni
+   *
+   * Ce choix est indépendant de player.element.
+   */
+  wizardElement?: Element | null;
 }
 
 /**
@@ -169,26 +187,21 @@ export function applyArcherPower(
   mode: ArcherMode,
 ): ClassPowerResult {
   if (mode === "shieldBreak") {
-    const shieldDamage = Math.min(
-      target.shield,
-      2,
-    );
-
-    target.shield -= shieldDamage;
+    const { shieldBroken, remainingShield } =
+      applyElementalShieldBreak(target, 2);
 
     return {
       classPowerEffect:
         "archerShieldBreakDamage",
 
       bonusDamage: {
-        shieldDamage,
+        shieldDamage: shieldBroken,
         hpDamage: 0,
-        remainingShield:
-          target.shield,
+        remainingShield,
         remainingHp:
           target.hp,
         dissipatedDamage:
-          2 - shieldDamage,
+          2 - shieldBroken,
         killed: false,
       },
     };
@@ -217,37 +230,38 @@ export function applyArcherPower(
  * exactement comme pour une voie élémentaire normale.
  *
  * IMPORTANT :
- * wizardElement est indépendant de player.element.
  *
- * Exemple :
+ * wizardElement est totalement indépendant
+ * de player.element.
  *
- *   player.element = Element.Water
- *   wizardElement = Element.Fire
+ * Il n'y a aucun fallback vers la voie élémentaire
+ * permanente du Sorcier.
  *
- * Le Sorcier utilise le bonus Feu pour cette action,
- * mais sa voie permanente reste Eau.
+ * Les trois états sont donc volontairement distincts :
+ *
+ *   undefined -> aucun choix fourni : erreur
+ *   null      -> choix volontaire : aucun bonus
+ *   Element.X -> utilise le bonus de l'élément X
  */
 export function applyWizardPower(
   game: GameState,
   player: Player,
   target: Player,
   targetId: string,
-  wizardElement?: Element,
+  wizardElement?: Element | null,
   shieldBreakTargetId?: string,
 ): ClassPowerResult {
-  /*
-   * Le Sorcier peut choisir ponctuellement un élément
-   * (wizardElement). S'il ne le fait pas mais qu'il a
-   * déjà une voie élémentaire permanente (player.element),
-   * son pouvoir de classe utilise cette voie par défaut.
-   */
-  const resolvedElement =
-    wizardElement ?? player.element ?? undefined;
-
-  if (resolvedElement === undefined) {
+  if (wizardElement === undefined) {
     throw new Error(
-      "Wizard must choose an elemental passive.",
+      "Wizard must choose whether to use an elemental passive.",
     );
+  }
+
+  if (wizardElement === null) {
+    return {
+      classPowerEffect:
+        "wizardNoElementalPassive",
+    };
   }
 
   const elementalResult =
@@ -256,7 +270,7 @@ export function applyWizardPower(
       player,
       target,
       targetId,
-      resolvedElement,
+      wizardElement,
       {
         shieldBreakTargetId,
       },
@@ -264,10 +278,17 @@ export function applyWizardPower(
 
   return {
     /*
-     * Pour le Sorcier, le pouvoir de classe EST
-     * le bonus élémentaire utilisé : classPowerEffect
-     * et elementalPowerEffect portent donc la même
-     * valeur (ex: "fireBonusDamage").
+     * Le pouvoir de classe du Sorcier utilise
+     * directement l'effet élémentaire choisi.
+     *
+     * Exemple :
+     *
+     *   wizardElement = Element.Fire
+     *
+     * donnera :
+     *
+     *   classPowerEffect = "fireBonusDamage"
+     *   elementalPowerEffect = "fireBonusDamage"
      */
     classPowerEffect:
       elementalResult.elementalPowerEffect,

@@ -63,13 +63,14 @@ export function hasElementAdvantage(
 }
 
 /**
- * Retire exactement 1 point de bouclier à une cible,
- * sans jamais passer sous 0.
+ * Retire des points de bouclier à une cible, sans jamais passer sous 0.
+ * `amount` par défaut à 1, correspondant au bonus passif de la Terre.
  */
 export function applyElementalShieldBreak(
   target: Pick<Player, "shield">,
+  amount: number = 1,
 ): ElementalShieldBreakResult {
-  const shieldBroken = Math.min(target.shield, 1);
+  const shieldBroken = Math.min(target.shield, amount);
 
   target.shield -= shieldBroken;
 

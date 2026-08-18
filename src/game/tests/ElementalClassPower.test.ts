@@ -176,7 +176,7 @@ describe("interactions attaques élémentaires + pouvoirs de classe", () => {
       "elemental-attack",
       target.id,
       {
-        elementalElement: Element.Fire,
+        wizardElement: Element.Fire,
       },
     );
 

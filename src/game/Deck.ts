@@ -26,116 +26,101 @@ function createCardId(
   return `${category}-${kind}-${String(index).padStart(3, "0")}`;
 }
 
-function createAttackCards(): Card[] {
+function createCardsFromCounts<K extends string>(
+  category: string,
+  counts: Record<K, number>,
+  buildCard: (kind: K, id: string) => Card,
+): Card[] {
   const cards: Card[] = [];
 
-  for (const [attack, count] of Object.entries(
-    INITIAL_DECK_CONFIG.attacks,
-  )) {
+  for (const [kind, count] of Object.entries(counts) as [
+    K,
+    number,
+  ][]) {
     for (let i = 1; i <= count; i += 1) {
-      cards.push({
-        id: createCardId("attack", attack, i),
-        name: `Attaque ${attack} ${i}`,
-        type: CardType.Attack,
-        attack: attack as AttackCard,
-      });
+      cards.push(
+        buildCard(kind, createCardId(category, kind, i)),
+      );
     }
   }
 
   return cards;
+}
+
+function createAttackCards(): Card[] {
+  return createCardsFromCounts(
+    "attack",
+    INITIAL_DECK_CONFIG.attacks,
+    (attack, id) => ({
+      id,
+      name: `Attaque ${attack} ${id}`,
+      type: CardType.Attack,
+      attack: attack as AttackCard,
+    }),
+  );
 }
 
 function createPotionCards(): Card[] {
-  const cards: Card[] = [];
-
-  for (const [potion, count] of Object.entries(
+  return createCardsFromCounts(
+    "potion",
     INITIAL_DECK_CONFIG.potions,
-  )) {
-    for (let i = 1; i <= count; i += 1) {
-      cards.push({
-        id: createCardId("potion", potion, i),
-        name: `Potion ${potion} ${i}`,
-        type: CardType.Potion,
-        potion: potion as PotionCard,
-      });
-    }
-  }
-
-  return cards;
+    (potion, id) => ({
+      id,
+      name: `Potion ${potion} ${id}`,
+      type: CardType.Potion,
+      potion: potion as PotionCard,
+    }),
+  );
 }
 
 function createElementalAttackCards(): Card[] {
-  const cards: Card[] = [];
-
-  for (const [attack, count] of Object.entries(
+  return createCardsFromCounts(
+    "elemental-attack",
     INITIAL_DECK_CONFIG.elementalAttack,
-  )) {
-    for (let i = 1; i <= count; i += 1) {
-      cards.push({
-        id: createCardId("elemental-attack", attack, i),
-        name: `Attaque élémentaire ${attack} ${i}`,
-        type: CardType.ElementalAttack,
-        attack: attack as AttackCard,
-      });
-    }
-  }
-
-  return cards;
+    (attack, id) => ({
+      id,
+      name: `Attaque élémentaire ${attack} ${id}`,
+      type: CardType.ElementalAttack,
+      attack: attack as AttackCard,
+    }),
+  );
 }
 
 function createElementalPotionCards(): Card[] {
-  const cards: Card[] = [];
-
-  for (const [potion, count] of Object.entries(
+  return createCardsFromCounts(
+    "elemental-potion",
     INITIAL_DECK_CONFIG.elementalPotion,
-  )) {
-    for (let i = 1; i <= count; i += 1) {
-      cards.push({
-        id: createCardId("elemental-potion", potion, i),
-        name: `Potion élémentaire ${potion} ${i}`,
-        type: CardType.ElementalPotion,
-        potion: potion as PotionCard,
-      });
-    }
-  }
-
-  return cards;
+    (potion, id) => ({
+      id,
+      name: `Potion élémentaire ${potion} ${id}`,
+      type: CardType.ElementalPotion,
+      potion: potion as PotionCard,
+    }),
+  );
 }
 
 function createElementalPathCards(): Card[] {
-  const cards: Card[] = [];
-
-  for (
-    let i = 1;
-    i <= INITIAL_DECK_CONFIG.elementalPath;
-    i += 1
-  ) {
-    cards.push({
-      id: createCardId("elemental-path", "path", i),
-      name: `Voie élémentaire ${i}`,
+  return createCardsFromCounts(
+    "elemental-path",
+    { path: INITIAL_DECK_CONFIG.elementalPath },
+    (_kind, id) => ({
+      id,
+      name: `Voie élémentaire ${id}`,
       type: CardType.ElementalPath,
-    });
-  }
-
-  return cards;
+    }),
+  );
 }
 
 function createTrickCards(): Card[] {
-  const cards: Card[] = [];
-
-  for (
-    let i = 1;
-    i <= INITIAL_DECK_CONFIG.trick;
-    i += 1
-  ) {
-    cards.push({
-      id: createCardId("trick", "trick", i),
-      name: `Carabistouille ${i}`,
+  return createCardsFromCounts(
+    "trick",
+    { trick: INITIAL_DECK_CONFIG.trick },
+    (_kind, id) => ({
+      id,
+      name: `Carabistouille ${id}`,
       type: CardType.Trick,
-    });
-  }
-
-  return cards;
+    }),
+  );
 }
 
 export function createInitialDeckCards(): Card[] {
