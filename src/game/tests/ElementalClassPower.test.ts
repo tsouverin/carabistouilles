@@ -43,6 +43,8 @@ function createTestGame(
     currentPlayerId: player.id,
     actionsRemaining: 1,
     turnNumber: 1,
+    status: "playing",
+    winnerId: null,
     deck: {
       drawPile: [],
       discardPile: [],

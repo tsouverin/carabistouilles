@@ -11,16 +11,8 @@ import { PlayerClass } from "../types";
 
 function createTestGame(): GameState {
   const players = [
-    createPlayer(
-      "p1",
-      "Player 1",
-      PlayerClass.Warrior,
-    ),
-    createPlayer(
-      "p2",
-      "Player 2",
-      PlayerClass.Paladin,
-    ),
+    createPlayer("p1", "Player 1", PlayerClass.Warrior),
+    createPlayer("p2", "Player 2", PlayerClass.Paladin),
   ];
 
   return {
@@ -28,6 +20,8 @@ function createTestGame(): GameState {
     currentPlayerId: "p1",
     actionsRemaining: 2,
     turnNumber: 1,
+    status: "playing",
+    winnerId: null,
     deck: {
       drawPile: [],
       discardPile: [],

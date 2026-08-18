@@ -2,6 +2,11 @@ import type { Player } from "./Player";
 import type { Deck } from "./Deck";
 import { createInitialDeck } from "./Deck";
 
+export type GameStatus =
+  | "waiting"
+  | "playing"
+  | "finished";
+
 export interface GameState {
   players: Player[];
 
@@ -11,6 +16,9 @@ export interface GameState {
   actionsRemaining: number;
 
   turnNumber: number;
+
+  status: GameStatus;
+  winnerId: string | null;
 }
 
 export function createGameState(
@@ -31,5 +39,8 @@ export function createGameState(
     actionsRemaining: 0,
 
     turnNumber: 0,
+
+    status: "waiting",
+    winnerId: null,
   };
 }
